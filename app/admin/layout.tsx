@@ -19,27 +19,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Check existing session immediately
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setAuthState('authed');
-      else if (pathname !== '/admin/login') setAuthState('unauthed');
-      else setAuthState('authed'); // on login page, no need to guard
-    });
-
-    // Also subscribe so fresh logins propagate instantly
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // onAuthStateChange fires immediately with the current session state,
+    // so we don't need a separate getSession() call.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setAuthState('authed');
-      } else if (pathname !== '/admin/login') {
+      } else {
         setAuthState('unauthed');
       }
     });
     return () => subscription.unsubscribe();
-  }, [pathname]);
+  }, []); // run once — no pathname dependency to avoid re-triggering on navigation
 
   useEffect(() => {
-    if (authState === 'unauthed') router.replace('/admin/login');
-  }, [authState, router]);
+    if (authState === 'unauthed' && pathname !== '/admin/login') {
+      router.replace('/admin/login');
+    }
+  }, [authState, pathname, router]);
 
   const logout = async () => {
     await supabase.auth.signOut();
